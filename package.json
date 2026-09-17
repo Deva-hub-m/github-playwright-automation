@@ -1,0 +1,23 @@
+{
+  "name": "github-playwright-automation",
+  "version": "1.0.0",
+  "description": "This project is an automated testing framework for testing the GitHub web application using **Playwright with Java**.",
+  "main": "index.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Deva-hub-m/github-playwright-automation.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Deva-hub-m/github-playwright-automation/issues"
+  },
+  "homepage": "https://github.com/Deva-hub-m/github-playwright-automation#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.3"
+  }
+}
