@@ -1,0 +1,29 @@
+{
+  "name": "github-playwright-automation",
+  "version": "1.0.0",
+  "description": "Playwright JavaScript automation framework for GitHub web application",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:report": "playwright show-report"
+  },
+  "keywords": [
+    "playwright",
+    "automation",
+    "javascript",
+    "page-object-model",
+    "github"
+  ],
+  "author": "Deva Vignan",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@faker-js/faker": "^9.3.0",
+    "dotenv": "^16.4.7",
+    "xlsx": "^0.18.5"
+  }
+}
