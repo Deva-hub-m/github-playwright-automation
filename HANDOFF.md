@@ -228,7 +228,7 @@ test.afterEach(async ({ page }, testInfo) => {
 | **Naveen** | GitHub Gists | `pages/GistCreatePage.js`, `pages/GistViewPage.js`, `tests/gist.spec.js` | ⚪ Not Started |
 | **Neil Joe** | Code Browser & Commits | `pages/CodeBrowserPage.js`, `pages/FileViewPage.js`, `pages/CommitHistoryPage.js`, `tests/codeviewer.spec.js` | ⚪ Not Started |
 | **Arsath** | Config, Data & Utilities | `utils/ConfigReader.js`, `utils/ExcelUtils.js`, `utils/FakerDataFactory.js`, `utils/WaitUtils.js`, `.env.example` | 🟡 In Progress |
-| **Nitin K M** | CI/CD Pipeline | `.github/workflows/playwright-ci.yml` | ⚪ Not Started |
+| **Nitin K M** | CI/CD Pipeline | `.github/workflows/playwright-ci.yml`, `.github/workflows/playwright-scheduled.yml`, `.github/PULL_REQUEST_TEMPLATE.md` | ✅ Done |
 
 ---
 
@@ -273,7 +273,9 @@ test.afterEach(async ({ page }, testInfo) => {
 | `utils/FakerDataFactory.js` | Arsath | 🟡 In Progress | — |
 | `utils/WaitUtils.js` | Arsath | 🟡 In Progress | — |
 | `.env.example` | Arsath | ✅ Done | — |
-| `.github/workflows/playwright-ci.yml` | Nitin K M | ⚪ Not Started | — |
+| `.github/workflows/playwright-ci.yml` | Nitin K M | ✅ Done | Push/PR trigger, 3-browser matrix, artifact upload, Actions summary |
+| `.github/workflows/playwright-scheduled.yml` | Nitin K M | ✅ Done | Nightly cron at 00:00 UTC, 3-browser matrix, 30-day artifact retention |
+| `.github/PULL_REQUEST_TEMPLATE.md` | Nitin K M | ✅ Done | Checklist enforcing HANDOFF.md update + no-secrets policy |
 
 ---
 
@@ -306,4 +308,51 @@ When you finish your area, update this file as follows:
 
 ---
 
-*Last updated by: **Sulthan** — Reporting & Screenshots area*
+---
+
+### ✅ Nitin K M — CI/CD & Execution
+**Completed:** 2025-01
+
+#### Files Created
+
+| File | Description |
+|---|---|
+| [`.github/workflows/playwright-ci.yml`](.github/workflows/playwright-ci.yml) | Primary CI pipeline — triggers on push/PR to master and on manual dispatch |
+| [`.github/workflows/playwright-scheduled.yml`](.github/workflows/playwright-scheduled.yml) | Nightly scheduled run at 00:00 UTC every day |
+| [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) | PR checklist enforcing HANDOFF.md updates and no-secrets policy |
+
+#### What Each File Does
+
+**`.github/workflows/playwright-ci.yml`**
+Four-job pipeline:
+1. **install** — `npm ci`, reads Playwright version, caches `node_modules` and browser binaries (`~/.playwright-browsers`) keyed to the exact PW version.
+2. **lint** — fast pre-gate: verifies `playwright.config.js` parses, `utils/index.js` loads, and lists registered projects.
+3. **test** — `matrix: [chromium, firefox, webkit]` with `fail-fast: false` so all browsers report independently. Writes `.env` from GitHub Secrets (never echoed). Runs `npx playwright test --project=<browser>`. Uploads `playwright-report-<browser>` and `test-results-<browser>` artefacts (retained 14 days).
+4. **summary** — downloads all browser reports and writes a consolidated markdown table to the GitHub Actions step summary page.
+
+Manual dispatch exposes two inputs: `browser` (single browser or `all`) and `headed` (`true`/`false`).
+
+**`.github/workflows/playwright-scheduled.yml`**
+Same structure as the CI pipeline but triggered by cron (`0 0 * * *` = 00:00 UTC / 05:30 IST). Artefacts retained for 30 days (longer than CI's 14) so nightly results survive across a working week.
+
+#### GitHub Secrets Required
+
+| Secret name | Maps to `.env` key | Notes |
+|---|---|---|
+| `GITHUB_USERNAME` | `GITHUB_USERNAME` | GitHub account used in authenticated tests |
+| `GITHUB_PASSWORD` | `GITHUB_PASSWORD` | Account password — store as an encrypted secret |
+| `GH_TOKEN` | `GITHUB_TOKEN` | Personal Access Token for REST API tests (optional) |
+
+> Set these under **Settings → Secrets and variables → Actions** in the repository.
+
+#### Design Decisions
+
+- **Browser caching** — Playwright binaries are cached per OS + exact Playwright version. On cache hit only OS-level deps are re-installed (`playwright install-deps`), saving ~2 min per run.
+- **`fail-fast: false`** — a WebKit failure does not cancel Chromium/Firefox; all three results are always available.
+- **Secrets never echo** — `.env` is constructed with `printf '%s\n'` so secret values never appear in the Actions log even with debug logging enabled.
+- **`npm ci --prefer-offline || npm install`** — falls back gracefully when there is no lock file (team convention omits `package-lock.json` from `.gitignore`).
+- **`actions/checkout@v4`, `setup-node@v4`, `cache@v4`, `upload-artifact@v4`** — all pinned to the latest major version (v4) per GitHub's recommended practice.
+
+---
+
+*Last updated by: **Nitin K M** — CI/CD & Execution area*
