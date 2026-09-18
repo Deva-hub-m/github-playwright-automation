@@ -1,0 +1,252 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .github/workflows/playwright-ci.yml
+#
+# Owner : Nitin K M — CI/CD & Execution
+# Project: GitHub Playwright Automation — Group 5, IBM QE Training
+#
+# Purpose
+# ───────
+# Full CI/CD pipeline for the Playwright automation suite. Triggers on every
+# push / PR to master and on manual dispatch. Runs all tests across three
+# browsers (Chromium, Firefox, WebKit) in parallel, uploads HTML reports and
+# traces as downloadable artefacts, and posts a summary to the Actions summary
+# page.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Playwright CI
+
+# ── Triggers ──────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+    inputs:
+      browser:
+        description: 'Browser to run (chromium | firefox | webkit | all)'
+        required: false
+        default: 'all'
+      headed:
+        description: 'Run headed (true | false)'
+        required: false
+        default: 'false'
+
+# ── Global env available to every job ─────────────────────────────────────────
+env:
+  NODE_VERSION: '20'
+  # Playwright browsers are installed to a well-known path so the cache key
+  # can be tied to the exact Playwright version declared in package.json.
+  PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.playwright-browsers
+
+# ── Jobs ──────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── 1. Install dependencies & cache ─────────────────────────────────────────
+  install:
+    name: Install Dependencies
+    runs-on: ubuntu-latest
+    outputs:
+      playwright-version: ${{ steps.pw-version.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package.json
+
+      - name: Install Node dependencies
+        run: npm ci --prefer-offline || npm install
+
+      - name: Read Playwright version
+        id: pw-version
+        run: |
+          VERSION=$(node -p "require('./node_modules/@playwright/test/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Playwright version: $VERSION"
+
+      - name: Cache Playwright browser binaries
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: playwright-browsers-${{ runner.os }}-${{ steps.pw-version.outputs.version }}
+          restore-keys: |
+            playwright-browsers-${{ runner.os }}-
+
+      - name: Install Playwright browsers + OS dependencies
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Install OS browser dependencies (cached binaries)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium firefox webkit
+
+      # ── Cache node_modules so test jobs skip re-installing ──────────────────
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package.json') }}
+
+  # ── 2. Lint / static check (fast gate before expensive browser runs) ─────────
+  lint:
+    name: Lint & Static Checks
+    runs-on: ubuntu-latest
+    needs: install
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package.json
+
+      - name: Restore node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package.json') }}
+
+      - name: Verify Playwright config parses without errors
+        run: node -e "require('./playwright.config.js'); console.log('playwright.config.js ✅')"
+
+      - name: Verify all utility exports load cleanly
+        run: node -e "require('./utils/index'); console.log('utils/index.js ✅')"
+
+      - name: List registered Playwright projects
+        run: npx playwright test --list --reporter=list 2>&1 | head -30 || true
+
+  # ── 3. Multi-browser test matrix ────────────────────────────────────────────
+  test:
+    name: Tests — ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    needs: [ install, lint ]
+
+    strategy:
+      fail-fast: false          # keep running other browsers if one fails
+      matrix:
+        browser: [ chromium, firefox, webkit ]
+
+    # Skip individual browsers when workflow_dispatch selects a single one
+    # (when 'all' is selected or triggered by push/PR all three run).
+    if: |
+      github.event_name != 'workflow_dispatch' ||
+      inputs.browser == 'all' ||
+      inputs.browser == matrix.browser
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: package.json
+
+      - name: Restore node_modules cache
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package.json') }}
+
+      - name: Restore Playwright browser cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
+          key: playwright-browsers-${{ runner.os }}-${{ needs.install.outputs.playwright-version }}
+          restore-keys: |
+            playwright-browsers-${{ runner.os }}-
+
+      - name: Install OS browser dependencies (from cache)
+        run: npx playwright install-deps ${{ matrix.browser }}
+
+      # ── Write credentials from GitHub Secrets into .env ────────────────────
+      # Secrets are never echoed — only the variable names appear in logs.
+      - name: Create .env from GitHub Secrets
+        env:
+          GITHUB_USERNAME_SECRET: ${{ secrets.GITHUB_USERNAME }}
+          GITHUB_PASSWORD_SECRET: ${{ secrets.GITHUB_PASSWORD }}
+          GITHUB_TOKEN_SECRET:    ${{ secrets.GH_TOKEN }}
+        run: |
+          cat > .env <<'EOF'
+          BASE_URL=https://github.com
+          HEADLESS=true
+          TIMEOUT=30000
+          EOF
+          # Append secrets on separate lines to avoid shell interpolation issues
+          printf 'GITHUB_USERNAME=%s\n' "$GITHUB_USERNAME_SECRET" >> .env
+          printf 'GITHUB_PASSWORD=%s\n' "$GITHUB_PASSWORD_SECRET" >> .env
+          printf 'GITHUB_TOKEN=%s\n'    "$GITHUB_TOKEN_SECRET"    >> .env
+
+      # ── Run Playwright for this browser only ────────────────────────────────
+      - name: Run Playwright tests (${{ matrix.browser }})
+        env:
+          CI: 'true'
+          HEADLESS: ${{ github.event.inputs.headed == 'true' && 'false' || 'true' }}
+        run: |
+          npx playwright test \
+            --project=${{ matrix.browser }} \
+            --reporter=html,list \
+            --output=test-results/${{ matrix.browser }}
+
+      # ── Upload artefacts on every run (pass & fail) ─────────────────────────
+      - name: Upload Playwright HTML report (${{ matrix.browser }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload test results & traces (${{ matrix.browser }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 14
+
+  # ── 4. Aggregate summary posted to the Actions summary page ─────────────────
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all browser reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: playwright-report-*
+          path: all-reports/
+          merge-multiple: false
+
+      - name: Write job summary
+        run: |
+          echo "## 🎭 Playwright CI Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Browser | Report |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          for browser in chromium firefox webkit; do
+            echo "| $browser | \`playwright-report-$browser\` artefact |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Triggered by:** ${{ github.actor }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Run:** [${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> "$GITHUB_STEP_SUMMARY"
