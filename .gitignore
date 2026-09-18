@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Playwright output
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Environment secrets — never commit real credentials
+.env
+
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+
+# Bob AI assistant config
+.bob/
