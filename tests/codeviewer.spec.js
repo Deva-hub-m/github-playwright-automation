@@ -19,6 +19,11 @@
  */
 
 const { test, expect } = require('@playwright/test');
+
+// microsoft/vscode is a very large repo; page loads can take >30 s when running
+// alongside other workers. Override the per-test timeout for this spec only.
+test.setTimeout(90_000);
+
 const { CodeBrowserPage }   = require('../pages/CodeBrowserPage');
 const { FileViewPage }      = require('../pages/FileViewPage');
 const { CommitHistoryPage } = require('../pages/CommitHistoryPage');

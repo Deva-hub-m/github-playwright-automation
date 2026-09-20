@@ -41,8 +41,7 @@ class CodeBrowserPage extends BasePage {
    * @param {string} repo   Repository name
    */
   async openRepo(owner, repo) {
-    await this.navigate(`/${owner}/${repo}`);
-    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.goto(`/${owner}/${repo}`, { waitUntil: 'domcontentloaded' });
     return this;
   }
 
@@ -54,8 +53,7 @@ class CodeBrowserPage extends BasePage {
    * @param {string} path   Directory path relative to repo root (e.g. 'src/utils')
    */
   async openDirectory(owner, repo, path) {
-    await this.navigate(`/${owner}/${repo}/tree/HEAD/${path}`);
-    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.goto(`/${owner}/${repo}/tree/HEAD/${path}`, { waitUntil: 'domcontentloaded' });
     return this;
   }
 

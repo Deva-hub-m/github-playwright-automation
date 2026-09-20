@@ -60,8 +60,7 @@ class FileViewPage extends BasePage {
    * @param {string} path    File path relative to repo root (e.g. 'README.md')
    */
   async openFile(owner, repo, branch, path) {
-    await this.navigate(`/${owner}/${repo}/blob/${branch}/${path}`);
-    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.goto(`/${owner}/${repo}/blob/${branch}/${path}`, { waitUntil: 'domcontentloaded' });
     return this;
   }
 

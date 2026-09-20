@@ -65,8 +65,7 @@ class CommitHistoryPage extends BasePage {
    * @param {string} repo   Repository name
    */
   async openCommitHistory(owner, repo) {
-    await this.navigate(`/${owner}/${repo}/commits`);
-    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.goto(`/${owner}/${repo}/commits`, { waitUntil: 'domcontentloaded' });
     return this;
   }
 
@@ -78,8 +77,7 @@ class CommitHistoryPage extends BasePage {
    * @param {string} branch  Branch name
    */
   async openBranchCommits(owner, repo, branch) {
-    await this.navigate(`/${owner}/${repo}/commits/${branch}`);
-    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.goto(`/${owner}/${repo}/commits/${branch}`, { waitUntil: 'domcontentloaded' });
     return this;
   }
 
@@ -92,32 +90,30 @@ class CommitHistoryPage extends BasePage {
    * @param {string} path    File path (e.g. 'README.md')
    */
   async openFileCommits(owner, repo, branch, path) {
-    await this.navigate(`/${owner}/${repo}/commits/${branch}/${path}`);
-    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.goto(`/${owner}/${repo}/commits/${branch}/${path}`, { waitUntil: 'domcontentloaded' });
     return this;
   }
 
   /**
    * Return all visible commit messages as an array of strings.
-   * Each commit title may be split across multiple sibling <a> tags;
-   * this joins all link texts per commit row into a single string.
+   * Reads the first non-empty text line from each commit row li element,
+   * which is always the commit title regardless of GitHub's class naming.
    *
    * @returns {Promise<string[]>}
    */
   async getCommitMessages() {
-    // Wait for at least one commit item to be visible
     await this.commitItems.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
-
-    // Collect all commit message link texts, deduplicate, and filter empty
-    const texts = await this.commitMessages.allInnerTexts();
-    const unique = [...new Set(texts.map(t => t.trim()).filter(Boolean))];
-
-    // If the CSS class approach found nothing, fall back to commit-item inner text
-    if (unique.length === 0) {
-      const itemTexts = await this.commitItems.allInnerTexts();
-      return itemTexts.map(t => t.split('\n')[0].trim()).filter(Boolean);
+    const count = await this.commitItems.count();
+    const messages = [];
+    for (let i = 0; i < Math.min(count, 30); i++) {
+      const item = this.commitItems.nth(i);
+      // Grab the first <a> inside the item that links to a commit
+      const link = item.locator('a[href*="/commit/"]').first();
+      const text = await link.innerText().catch(() => '');
+      const trimmed = text.trim();
+      if (trimmed) messages.push(trimmed);
     }
-    return unique;
+    return [...new Set(messages)];
   }
 
   /**
