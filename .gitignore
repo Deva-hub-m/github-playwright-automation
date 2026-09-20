@@ -7,7 +7,7 @@ test-results/
 playwright-report/
 playwright/.cache/
 
-# Environment secrets — never commit real credentials
+# Environment secrets ï¿½ never commit real credentials
 .env
 
 # IDE / editor
@@ -21,3 +21,9 @@ Thumbs.db
 
 # Bob AI assistant config
 .bob/
+
+# Playwright
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
