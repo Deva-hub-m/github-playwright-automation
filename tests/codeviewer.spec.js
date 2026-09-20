@@ -20,18 +20,25 @@
 
 const { test, expect } = require('@playwright/test');
 
-// microsoft/vscode is a very large repo; page loads can take >30 s when running
-// alongside other workers. Override the per-test timeout for this spec only.
-test.setTimeout(90_000);
+// GitHub pages can take >90 s on Firefox under parallel 7-worker load.
+// Override the per-test timeout for this spec only (navigation timeout is
+// set per-call on the page objects, not from this limit).
+test.setTimeout(150_000);
 
 const { CodeBrowserPage }   = require('../pages/CodeBrowserPage');
 const { FileViewPage }      = require('../pages/FileViewPage');
 const { CommitHistoryPage } = require('../pages/CommitHistoryPage');
 
-// Public repository used as the fixture throughout this spec
-const OWNER  = 'microsoft';
-const REPO   = 'vscode';
-const BRANCH = 'main';
+// Repositories used as fixtures.
+// CodeBrowser uses github/docs — a small, fast repo that loads quickly on all
+// browsers even under parallel load. FileView and CommitHistory use
+// microsoft/vscode which is fine for single-file / commits-list pages.
+const OWNER        = 'microsoft';
+const REPO         = 'vscode';
+const BRANCH       = 'main';
+const CB_OWNER     = 'github';   // lighter repo for file-tree tests
+const CB_REPO      = 'docs';
+const CB_BRANCH    = 'main';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Suite 1 — Code Browser (file tree)
@@ -48,10 +55,10 @@ test.describe('Code Browser — File Tree', () => {
   });
 
   test('Repository root loads and shows files', async () => {
-    await codeBrowserPage.openRepo(OWNER, REPO);
+    await codeBrowserPage.openRepo(CB_OWNER, CB_REPO);
 
     // The page URL should contain the owner/repo path
-    expect(codeBrowserPage.page.url()).toContain(`/${OWNER}/${REPO}`);
+    expect(codeBrowserPage.page.url()).toContain(`/${CB_OWNER}/${CB_REPO}`);
 
     // The file tree must have at least one entry
     const names = await codeBrowserPage.getFileNames();
@@ -59,16 +66,16 @@ test.describe('Code Browser — File Tree', () => {
   });
 
   test('Known top-level entry exists in file tree', async () => {
-    await codeBrowserPage.openRepo(OWNER, REPO);
+    await codeBrowserPage.openRepo(CB_OWNER, CB_REPO);
 
-    // vscode always has a ".github" folder at its root
+    // github/docs always has a ".github" folder at its root
     const hasGithub = await codeBrowserPage.entryExists('.github');
     expect(hasGithub).toBeTruthy();
   });
 
   test('Navigating to a sub-directory loads its contents', async () => {
     // Navigate directly to the src directory
-    await codeBrowserPage.openDirectory(OWNER, REPO, 'src');
+    await codeBrowserPage.openDirectory(CB_OWNER, CB_REPO, 'src');
 
     const names = await codeBrowserPage.getFileNames();
     expect(names.length).toBeGreaterThan(0);

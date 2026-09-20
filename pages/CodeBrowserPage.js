@@ -41,7 +41,7 @@ class CodeBrowserPage extends BasePage {
    * @param {string} repo   Repository name
    */
   async openRepo(owner, repo) {
-    await this.page.goto(`/${owner}/${repo}`, { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`/${owner}/${repo}`, { waitUntil: 'domcontentloaded', timeout: 120_000 });
     return this;
   }
 
@@ -53,7 +53,7 @@ class CodeBrowserPage extends BasePage {
    * @param {string} path   Directory path relative to repo root (e.g. 'src/utils')
    */
   async openDirectory(owner, repo, path) {
-    await this.page.goto(`/${owner}/${repo}/tree/HEAD/${path}`, { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`/${owner}/${repo}/tree/HEAD/${path}`, { waitUntil: 'domcontentloaded', timeout: 120_000 });
     return this;
   }
 
