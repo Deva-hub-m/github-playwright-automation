@@ -226,7 +226,7 @@ test.afterEach(async ({ page }, testInfo) => {
 | **Nitheesh** | Issues & Pull Requests | `pages/IssuePage.js`, `pages/PullRequestPage.js`, `tests/issue.spec.js`, `tests/pullrequest.spec.js` | ⚪ Not Started |
 | **Yazeen** | Search & Explore | `pages/SearchPage.js`, `pages/ExplorePage.js`, `tests/search.spec.js` | ⚪ Not Started |
 | **Naveen** | GitHub Gists | `pages/GistCreatePage.js`, `pages/GistViewPage.js`, `tests/gist.spec.js` | ⚪ Not Started |
-| **Neil Joe** | Code Browser & Commits | `pages/CodeBrowserPage.js`, `pages/FileViewPage.js`, `pages/CommitHistoryPage.js`, `tests/codeviewer.spec.js` | ⚪ Not Started |
+| **Neil Joe** | Code Browser & Commits | `pages/CodeBrowserPage.js`, `pages/FileViewPage.js`, `pages/CommitHistoryPage.js`, `tests/codeviewer.spec.js` | ✅ Done |
 | **Arsath** | Config, Data & Utilities | `utils/ConfigReader.js`, `utils/ExcelUtils.js`, `utils/FakerDataFactory.js`, `utils/WaitUtils.js`, `.env.example` | 🟡 In Progress |
 | **Nitin K M** | CI/CD Pipeline | `.github/workflows/playwright-ci.yml`, `.github/workflows/playwright-scheduled.yml`, `.github/PULL_REQUEST_TEMPLATE.md` | ✅ Done |
 
@@ -259,15 +259,15 @@ test.afterEach(async ({ page }, testInfo) => {
 | `pages/ExplorePage.js` | Yazeen | ⚪ Not Started | — |
 | `pages/GistCreatePage.js` | Naveen | ⚪ Not Started | — |
 | `pages/GistViewPage.js` | Naveen | ⚪ Not Started | — |
-| `pages/CodeBrowserPage.js` | Neil Joe | ⚪ Not Started | — |
-| `pages/FileViewPage.js` | Neil Joe | ⚪ Not Started | — |
-| `pages/CommitHistoryPage.js` | Neil Joe | ⚪ Not Started | — |
+| `pages/CodeBrowserPage.js` | Neil Joe | ✅ Done | File-tree browsing — openRepo, openDirectory, getFileNames, entryExists, clickEntry, getBreadcrumbText |
+| `pages/FileViewPage.js` | Neil Joe | ✅ Done | File content viewer — openFile, getCodeLines, getCodeContent, isFileContentVisible, getRawUrl, clickRaw |
+| `pages/CommitHistoryPage.js` | Neil Joe | ✅ Done | Commit log — openCommitHistory, openBranchCommits, openFileCommits, getCommitMessages, getCommitAuthors, hasCommits, clickCommitByMessage |
 | `tests/repository.spec.js` | Sujin | ⚪ Not Started | — |
 | `tests/issue.spec.js` | Nitheesh | ⚪ Not Started | — |
 | `tests/pullrequest.spec.js` | Nitheesh | ⚪ Not Started | — |
 | `tests/search.spec.js` | Yazeen | ⚪ Not Started | — |
 | `tests/gist.spec.js` | Naveen | ⚪ Not Started | — |
-| `tests/codeviewer.spec.js` | Neil Joe | ⚪ Not Started | — |
+| `tests/codeviewer.spec.js` | Neil Joe | ✅ Done | 10 tests across 3 suites (CodeBrowser, FileView, CommitHistory) — targets public microsoft/vscode repo, no login required |
 | `utils/ConfigReader.js` | Arsath | 🟡 In Progress | — |
 | `utils/ExcelUtils.js` | Arsath | 🟡 In Progress | — |
 | `utils/FakerDataFactory.js` | Arsath | 🟡 In Progress | — |
@@ -355,4 +355,70 @@ Same structure as the CI pipeline but triggered by cron (`0 0 * * *` = 00:00 UTC
 
 ---
 
-*Last updated by: **Nitin K M** — CI/CD & Execution area*
+*Last updated by: **Neil Joe Augustine** — Code Browser, File View & Commit History area*
+
+---
+
+### ✅ Neil Joe Augustine — Code Browser, File View & Commit History
+**Branch:** `neil`
+**Completed:** 2025-01
+
+#### Files Created / Modified
+
+| File | Action | Description |
+|---|---|---|
+| [`pages/CodeBrowserPage.js`](pages/CodeBrowserPage.js) | **Created** | Page object for browsing a repository's file tree |
+| [`pages/FileViewPage.js`](pages/FileViewPage.js) | **Created** | Page object for viewing an individual file (blob view) |
+| [`pages/CommitHistoryPage.js`](pages/CommitHistoryPage.js) | **Created** | Page object for the commit history / log pages |
+| [`tests/codeviewer.spec.js`](tests/codeviewer.spec.js) | **Created** | 10 Playwright tests across 3 suites — no login required |
+| [`pages/index.js`](pages/index.js) | **Updated** | Exports `CodeBrowserPage`, `FileViewPage`, `CommitHistoryPage` |
+
+#### What Each File Does
+
+**`pages/CodeBrowserPage.js`**
+Wraps interactions with the GitHub repository file-tree view (`/<owner>/<repo>`).
+
+```
+CodeBrowserPage.openRepo(owner, repo)              → navigates to repo root
+CodeBrowserPage.openDirectory(owner, repo, path)   → navigates to a sub-directory
+CodeBrowserPage.getFileNames()                      → returns string[] of visible file/folder names
+CodeBrowserPage.entryExists(name)                   → boolean — checks if a name is in the tree
+CodeBrowserPage.clickEntry(name)                    → clicks a file or folder by exact name
+CodeBrowserPage.getBreadcrumbText()                 → returns breadcrumb navigation text
+```
+
+**`pages/FileViewPage.js`**
+Wraps interactions with GitHub's blob / file viewer (`/<owner>/<repo>/blob/<branch>/<path>`).
+
+```
+FileViewPage.openFile(owner, repo, branch, path)   → navigates to a file
+FileViewPage.getFileName()                          → returns the file name from breadcrumb
+FileViewPage.getCodeLines()                         → returns string[] of rendered code lines
+FileViewPage.getCodeContent()                       → returns the full file text (joined lines)
+FileViewPage.isFileContentVisible()                 → boolean — checks code area is visible
+FileViewPage.getRawUrl()                            → returns the href of the Raw button
+FileViewPage.clickRaw()                             → clicks Raw and returns the resulting URL
+```
+
+**`pages/CommitHistoryPage.js`**
+Wraps interactions with GitHub's commit log (`/<owner>/<repo>/commits`).
+
+```
+CommitHistoryPage.openCommitHistory(owner, repo)          → navigates to default commits page
+CommitHistoryPage.openBranchCommits(owner, repo, branch)  → navigates to branch commit log
+CommitHistoryPage.openFileCommits(owner, repo, branch, p) → navigates to file commit log
+CommitHistoryPage.getCommitMessages()                     → returns string[] of commit titles
+CommitHistoryPage.getCommitAuthors()                      → returns string[] of author names
+CommitHistoryPage.getCommitCount()                        → returns number of visible commits
+CommitHistoryPage.hasCommits()                            → boolean — at least one commit found
+CommitHistoryPage.clickCommitByMessage(message)           → clicks a commit by message text
+CommitHistoryPage.getCommitSha()                          → returns SHA from commit detail page
+```
+
+#### Design Decisions
+
+- **No login required** — all tested pages are publicly accessible; avoids credential dependency.
+- **Target repo `microsoft/vscode`** — large, stable, always-public repo. `src/` folder and `package.json` are permanent fixtures; `README.md` always exists on `main`.
+- **Multi-selector locators** — each locator uses comma-separated CSS fallbacks to handle GitHub's periodic UI updates gracefully without test breakage.
+- **`.catch(() => {})` on waitFor** — optional waits degrade gracefully when a selector is absent rather than throwing; the test assertion itself fails meaningfully.
+- **`pages/index.js` updated** — Neil's three page classes are now re-exported from the barrel file so other specs can import them via `require('../pages')`.
